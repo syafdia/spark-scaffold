@@ -1,5 +1,6 @@
 package controllers;
 
+import applications.Auth;
 import applications.Helper;
 import models.BaseModel;
 import models.User;
@@ -17,7 +18,7 @@ public class UsersController extends BaseController implements ControllerInterfa
     @Override
     public String getOne(Request req, Response res) {
         super.setHandler(req, res);
-        super.setAuth("R_USER");
+        super.handleAuth("R_USER");
 
         int userId;
 
@@ -27,10 +28,8 @@ public class UsersController extends BaseController implements ControllerInterfa
             userId = 0;
         }
 
-        Map authUserData = super.auth.getUserData();
-
         // Disable checking others user data if current user role is "User"
-        if(super.auth.isUser() && userId != (int) authUserData.get("id")) {
+        if(super.auth.isUser() && super.auth.getUserId() != userId) {
             return handleResponse(403);
         }
 
@@ -53,7 +52,7 @@ public class UsersController extends BaseController implements ControllerInterfa
     @Override
     public String getAll(Request req, Response res) {
         super.setHandler(req, res);
-        super.setAuth("R_USER");
+        super.handleAuth("R_USER");
 
         if(!super.auth.isSuperAdministrator()) {
             return super.handleResponse(403);
@@ -79,9 +78,9 @@ public class UsersController extends BaseController implements ControllerInterfa
         BaseModel.open();
 
         List<User> users = User.findAll()
-                                .offset(offset)
-                                .limit(limit)
-                                .orderBy("created_at desc");
+                .offset(offset)
+                .limit(limit)
+                .orderBy("created_at desc");
 
         for (User user: users) {
             output.add((Map) user.getFormatted());
@@ -95,7 +94,7 @@ public class UsersController extends BaseController implements ControllerInterfa
     @Override
     public String store(Request req, spark.Response res){
         super.setHandler(req, res);
-        super.setAuth("C_USER");
+        super.handleAuth("C_USER");
 
         CreateUserPayload userPayload;
 
@@ -120,6 +119,7 @@ public class UsersController extends BaseController implements ControllerInterfa
         User newUser = new User()
                 .set("username", userPayload.username)
                 .set("password", hashedPassword)
+                .set("is_active", 1)
                 .set("salt", salt)
                 .set("role_id", userPayload.roleId)
                 .set("name", userPayload.name)
@@ -138,7 +138,7 @@ public class UsersController extends BaseController implements ControllerInterfa
     @Override
     public String update(Request req, Response res) {
         super.setHandler(req, res);
-        super.setAuth("U_USER");
+        super.handleAuth("U_USER");
 
         int userId;
 
@@ -158,10 +158,9 @@ public class UsersController extends BaseController implements ControllerInterfa
 
         Map updateData = userPayload.getFilled(Helper.objToMap(userPayload));
 
-        // Disable updating others user data if current user role is not "Superadministrator"
+        // Disable updating the others users data if current user role is not "Superadministrator"
         if(!super.auth.isSuperAdministrator()) {
-            Map authUserData = super.auth.getUserData();
-            if((int) authUserData.get("id") != userId) {
+            if((super.auth.getUserId() != userId)) {
                 return super.handleResponse(403);
             }
         }
@@ -189,7 +188,7 @@ public class UsersController extends BaseController implements ControllerInterfa
     @Override
     public String destroy(Request req, Response res) {
         super.setHandler(req, res);
-        super.setAuth("D_USER");
+        super.handleAuth("D_USER");
 
         int userId;
 
@@ -202,6 +201,7 @@ public class UsersController extends BaseController implements ControllerInterfa
         if(!super.auth.isSuperAdministrator()) {
             return super.handleResponse(403);
         }
+
         Boolean deleted;
 
         BaseModel.open();
@@ -236,7 +236,7 @@ public class UsersController extends BaseController implements ControllerInterfa
             return super.handleResponse(400);
         }
 
-        Object loginData = super.auth.attempt(userPayload.username, userPayload.password);
+        Object loginData = Auth.attempt(userPayload.username, userPayload.password);
 
         if(loginData == null) {
             return super.handleResponse(401);
@@ -247,7 +247,7 @@ public class UsersController extends BaseController implements ControllerInterfa
 
     public String updatePassword(Request req, Response res) {
         super.setHandler(req, res);
-        super.setAuth("U_PASSWORD");
+        super.handleAuth("U_PASSWORD");
 
         UpdatePasswordPayload updatePasswordPayload;
 
@@ -257,10 +257,9 @@ public class UsersController extends BaseController implements ControllerInterfa
             return super.handleResponse(400, super.getClassFields(UpdatePasswordPayload.class.getFields()));
         }
 
-        // Disable updating others user data if current user role is not "Superadministrator"
+        // Disable updating the others users data if current user role is not "Superadministrator"
         if(!super.auth.isSuperAdministrator()) {
-            Map authUserData = super.auth.getUserData();
-            if((int) authUserData.get("id") != updatePasswordPayload.userId) {
+            if(super.auth.getUserId() != updatePasswordPayload.userId) {
                 return super.handleResponse(403);
             }
         }
