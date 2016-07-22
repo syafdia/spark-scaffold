@@ -12,9 +12,9 @@ public class ResponseHandler {
 
     @Data
     class ResponseFormatterOk {
-        private int statusCode;
-        private String message;
-        private Object data;
+        public int statusCode;
+        public String message;
+        public Object data;
 
         public ResponseFormatterOk(int statusCode, String message, Object data) {
             this.statusCode = statusCode;
@@ -25,8 +25,8 @@ public class ResponseHandler {
 
     @Data
     class ResponseFormatterOkNoData {
-        private int statusCode;
-        private String message;
+        public int statusCode;
+        public String message;
 
         public ResponseFormatterOkNoData(int statusCode, String message) {
             this.statusCode = statusCode;
@@ -36,9 +36,9 @@ public class ResponseHandler {
 
     @Data
     class ResponseFormatterNok {
-        private int statusCode;
-        private String error;
-        private Object errorData;
+        public int statusCode;
+        public String error;
+        public Object errorData;
 
         public ResponseFormatterNok(int statusCode, String message, Object data) {
             this.statusCode = statusCode;
@@ -49,8 +49,8 @@ public class ResponseHandler {
 
     @Data
     class ResponseFormatterNokNoData {
-        private int statusCode;
-        private String error;
+        public int statusCode;
+        public String error;
 
         public ResponseFormatterNokNoData(int statusCode, String message) {
             this.statusCode = statusCode;

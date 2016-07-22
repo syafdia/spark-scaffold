@@ -20,7 +20,7 @@ import static spark.Spark.halt;
 public class BaseController {
     protected ResponseHandler responseHandler = new ResponseHandler();
     protected ObjectMapper mapper = new ObjectMapper();
-    protected Auth auth = new Auth();
+    protected Auth auth;
 
     protected Response res;
     protected Request req;
@@ -85,22 +85,21 @@ public class BaseController {
         return this.responseHandler.generate(statusCode, ResponseMessage.get(statusCode), null);
     }
 
-    public void setAuth(String permission) {
+    public void handleAuth(String permission) {
         String accessToken = this.req.headers("X-Token");
-        this.userHasAuth = true;
 
-        this.setAccessToken(accessToken);
+        this.auth = new Auth();
 
-        if(!this.userHasAuth) {
-            int statusCode = this.invalidCode;
+        Map authenticationData = (Map) this.auth.checkAuthentication(accessToken);
+        int statusCode = (int) authenticationData.get("statusCode");
+
+        if(statusCode != 200) {
             this.handleHalt(statusCode);
         }
 
-        this.setPermission(permission);
-
-        if(!this.userHasAuth) {
-            int statusCode = this.invalidCode;
-            this.handleHalt(statusCode);
+        Boolean hasAuthorization = this.auth.checkAuthorization(permission);
+        if(!hasAuthorization) {
+            this.handleHalt(403);
         }
     }
 
@@ -115,30 +114,9 @@ public class BaseController {
         return output;
     }
 
-    private void setAccessToken(String accessToken) {
-        Map output = (Map) this.auth.checkAuthentication(accessToken);
-        int statusCode = (int) output.get("statusCode");
-
-        if(statusCode != 200) {
-            this.userHasAuth = false;
-            this.invalidCode = statusCode;
-        }
-    }
-
-    private void setPermission(String permission) {
-        Boolean hasAuthentication = this.auth.checkAuthorization(permission);
-
-        if(hasAuthentication != true) {
-            this.userHasAuth = false;
-            this.invalidCode = 403;
-        }
-    }
-
     private void handleHalt(int statusCode) {
         this.res.status(200);
         this.res.type("application/json");
         halt(this.responseHandler.generate(statusCode, ResponseMessage.get(statusCode), null));
     }
-
-
 }

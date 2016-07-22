@@ -10,14 +10,9 @@ import java.util.*;
 public class Auth {
 
     private Boolean valid = true;
+    private Map userData = null;
 
-    public Map<String, Object> getUserData() {
-        return this.userData;
-    }
-
-    private Map<String, Object> userData = null;
-
-    public Object attempt(String username, String password) {
+    public static Object attempt(String username, String password) {
         BaseModel.open();
 
         User user = User.first("username = ?", username);
@@ -36,15 +31,24 @@ public class Auth {
             return null;
         }
 
-        Map<String, String> output = new HashMap<>();
+        Map<String, Object> output = new HashMap<>();
         Timestamp sqlTime = (Timestamp) user.get("token_expire");
 
-        output.put("username", (String) user.get("username"));
-        output.put("name", (String) user.get("name"));
-        output.put("accessToken", (String) user.get("access_token"));
+        output.put("username", user.get("username"));
+        output.put("name", user.get("name"));
+        output.put("isActive", user.get("is_active"));
+        output.put("accessToken", user.get("access_token"));
         output.put("tokenExpire", Helper.getFormattedTime(sqlTime.getTime()));
 
         return output;
+    }
+
+    public int getUserId() {
+        if(this.userData == null) {
+            return 0;
+        }
+
+        return (int) this.userData.get("id");
     }
 
     public Object checkAuthentication(String accessToken) {
@@ -60,6 +64,11 @@ public class Auth {
             return output;
         }
 
+        if(! (Boolean) user.get("is_active")) {
+            output.put("statusCode", 403);
+            return output;
+        }
+
         Timestamp sqlTime = (Timestamp) user.get("token_expire");
 
         if(this.isTokenExpire(sqlTime.getTime())) {
@@ -70,12 +79,14 @@ public class Auth {
 
         BaseModel.open();
 
-        this.userData = (Map<String, Object>) user.getFormatted();
+        Map<String, Object> userData = (Map<String, Object>) user.getFormatted();
 
         BaseModel.close();
 
         output.put("statusCode", 200);
-        output.put("userData", this.userData);
+        output.put("userData", userData);
+
+        this.userData = userData;
 
         return output;
     }
@@ -147,18 +158,17 @@ public class Auth {
         User user = User.findById(userId);
 
         user.set("access_token", this.generateToken())
-            .set("token_expire", this.updateTokenExpiredTime())
-            .saveIt();
+                .set("token_expire", this.updateTokenExpiredTime())
+                .saveIt();
 
         BaseModel.close();
     }
 
     private Boolean hasRole(String roleName) {
-        if(this.userData == null) {
+        if(this.userData == null ) {
             return false;
         }
-
-        Map<String, Object> userRole = (Map<String, Object>) this.userData.get("role");
+        Map<String, Object> userRole = (Map<String, Object>) userData.get("role");
         return userRole.get("name").equals(roleName);
     }
 
